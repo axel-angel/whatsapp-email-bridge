@@ -1,0 +1,9 @@
+# Example! Fit to your environement
+whatsapp_lmtp:
+    debug_print = "T: whatsapp_lmtp for $local_part@$domain"
+    driver = lmtp
+    socket = /home/user/whatsapp.sock
+    delivery_date_add
+    envelope_to_add
+    return_path_add
+    user = mail

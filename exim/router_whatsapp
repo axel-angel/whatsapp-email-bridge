@@ -1,0 +1,8 @@
+# Example! Fit to your environement
+whatsapp_router:
+    debug_print = "R: whatsapp_router for $local_part@$domain"
+    driver = accept
+    domains = dsearch;/etc/vmail
+    condition = ${if eq{${extract{1}{+}{$local_part}}}{whatsapp}}
+    transport = whatsapp_lmtp
+    no_more
