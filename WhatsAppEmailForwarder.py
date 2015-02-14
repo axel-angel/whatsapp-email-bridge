@@ -50,6 +50,7 @@ from yowsup.layers.protocol_media.protocolentities \
         import LocationMediaMessageProtocolEntity
 from yowsup.layers.protocol_media.protocolentities \
         import VCardMediaMessageProtocolEntity
+from yowsup.layers.protocol_iq import YowIqProtocolLayer
 from yowsup.layers.protocol_messages import YowMessagesProtocolLayer
 from yowsup.layers.protocol_messages.protocolentities \
         import TextMessageProtocolEntity
@@ -174,7 +175,7 @@ class YowsupMyStack(object):
             MailLayer,
             (YowAuthenticationProtocolLayer, YowMessagesProtocolLayer,
                 YowReceiptProtocolLayer, YowAckProtocolLayer,
-                YowMediaProtocolLayer),
+                YowMediaProtocolLayer, YowIqProtocolLayer),
             YowLoggerLayer,
             YowCoderLayer,
             YowCryptLayer,
