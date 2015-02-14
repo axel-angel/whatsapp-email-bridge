@@ -1,0 +1,6 @@
+phone: "XXXXXXXXXXX"
+password: "XXXXXXXXXXXXXXXX"
+reply: "whatsapp+%s@example.com"
+smtp: "localhost"
+sendto: "you@example.com"
+socket: "/home/you/whatsapp.sock"

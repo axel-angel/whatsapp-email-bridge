@@ -59,7 +59,6 @@ from yowsup.layers.protocol_receipts.protocolentities \
 from yowsup.layers.stanzaregulator import YowStanzaRegulator
 from yowsup.stacks import YowStack
 
-socket_file = '/mnt/raid5e/lmtp.sock'
 config_file = 'whatsapp_config'
 
 
@@ -70,8 +69,7 @@ class MailLayer(YowInterfaceLayer):
 
     def startInputThread(self):
         print "Starting input thread"
-        #server = LMTPServer(self, socket_file, None) # FIXME
-        server = LMTPServer(self, ('localhost', 10025), None)
+        server = LMTPServer(self, config.get('socket'), None)
         atexit.register(clean_socket)
 
     @ProtocolEntityCallback("success")
@@ -214,10 +212,6 @@ class LMTPChannel(SMTPChannel):
 
 class LMTPServer(SMTPServer):
     def __init__(self, yowsup, localaddr, remoteaddr):
-        SMTPServer.__init__(self, localaddr, remoteaddr)
-        self._yowsup = yowsup
-
-    def __init__2(self, yowsup, localaddr, remoteaddr):
         # code taken from original SMTPServer code
         self._yowsup = yowsup
         self._localaddr = localaddr
@@ -241,14 +235,13 @@ class LMTPServer(SMTPServer):
     def process_message(self, peer, mailfrom, rcpttos, data):
         # TODO: Add support for sending media as attached file
         m = Parser().parsestr(data)
-        print self, vars(self)
         print "<= Mail: %s -> %s" % (mailfrom, rcpttos)
 
         for dst in rcpttos:
             parts = dst.split('@')[0].split('+', 1)
             if not (parts[0] == 'whatsapp' and len(parts) == 2):
                 print "malformed dst: %s" % (dst)
-                return "501 Ignoring recipient malformed: %s" % (dst)
+                return "501 malformed recipient: %s" % (dst)
 
             jid = normalizeJid(parts[1])
             msg = TextMessageProtocolEntity(m.get_payload(), to = jid)
@@ -271,7 +264,7 @@ def normalizeJid(number):
 
 def clean_socket():
     try:
-        os.unlink(socket_file)
+        os.unlink(config.get('socket'))
     except OSError:
         pass
 
@@ -282,4 +275,7 @@ if __name__ == "__main__":
     print "Starting"
     stack = YowsupMyStack((config.get('phone'), config.get('password')))
     print "Connecting"
-    stack.start()
+    try:
+        stack.start()
+    except KeyboardInterrupt:
+        print "Terminated by user"
