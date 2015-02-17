@@ -1,0 +1,32 @@
+== DESCRIPTION
+This program, whatsapp-email-bridge, allows to make a two-way gateway between
+your WhatsApp account and any email address.
+
+This means that this program:
+ (1) Will receive your messages from WhatsApp and forward them to your email
+     address, AND
+ (2) It will listen for incoming emails (on its own socket) and forward them to
+     WhatsApp.
+
+== INSTALL
+You will to install yowsup:
+    pip install yowsup2
+
+Then to configure this app, copy and edit the config file in YAML:
+    cp whatsapp_config.example whatsapp_config
+    vi whatsapp_config
+
+You need to fill in all fields, here is a little description:
+    phone: Your phone number using the international format (2 numbers), then
+        your local number without the leading zero, eg: 41791231212
+    password: Your WhatsApp password, you should have it already or you need to
+        register, read:
+            https://github.com/tgalal/yowsup/issues/195#issuecomment-29389646
+    reply: The email address template that's used to reply to WhatsApp messages
+        forwarded by email, eg: myaccount+%s@gmail.com . Note that the %s is
+        replaced by the destination phone number.
+    smtp: The SMTP server used to forward WhatsApps messages, eg: gmail.com.
+    sendto: The email address where you receive your WhatsApps messages,
+        eg: "myaccount@gmail.com"
+    socket: File path of the unix domain socket that listen for incoming email
+        that will be forwarded on WhatsApp.
