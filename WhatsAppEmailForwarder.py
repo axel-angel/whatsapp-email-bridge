@@ -128,7 +128,21 @@ class MailLayer(YowInterfaceLayer):
         msg['Subject'] = txt
         msg['Date'] = formatdate(timestamp)
 
-        s = smtplib.SMTP(config.get('smtp'))
+        if config.get('smtp_ssl'):
+            s_class = smtplib.SMTP_SSL
+        else:
+            s_class = smtplib.SMTP
+
+        s = s_class(config.get('smtp'))
+
+        if not config.get('smtp_ssl'):
+            try:
+                s.starttls() # Some servers require it, let's try
+            except SMTPException:
+                print "<= Mail: Server doesn't support STARTTLS"
+                if config.get('force_starttls'):
+                    raise
+
         s.sendmail(dst, [dst], msg.as_string())
         s.quit()
         print "=> Mail: %s -> %s" % (replyAddr, dst)

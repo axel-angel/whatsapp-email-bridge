@@ -3,4 +3,6 @@ password: "XXXXXXXXXXXXXXXX"
 reply: "whatsapp+%s@example.com"
 smtp: "localhost"
 sendto: "you@example.com"
+force_starttls: 0
+smtp_ssl: 0
 socket: "/home/you/whatsapp.sock"
