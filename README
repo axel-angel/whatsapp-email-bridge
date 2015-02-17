@@ -9,7 +9,7 @@ This means that this program:
      WhatsApp.
 
 == INSTALL
-You will to install yowsup:
+You will need to install yowsup:
     pip install yowsup2
 
 Then to configure this app, copy and edit the config file in YAML:
@@ -26,6 +26,8 @@ You need to fill in all fields, here is a little description:
         forwarded by email, eg: myaccount+%s@gmail.com . Note that the %s is
         replaced by the destination phone number.
     smtp: The SMTP server used to forward WhatsApps messages, eg: gmail.com.
+    force_starttls: use 0 to ignore if STARTTLS fails or 1 to abort
+    smtp_ssl: use 0 to establish regular SMTP or 1 for SMTP SSL (SMTPS)
     sendto: The email address where you receive your WhatsApps messages,
         eg: "myaccount@gmail.com"
     socket: File path of the unix domain socket that listen for incoming email
