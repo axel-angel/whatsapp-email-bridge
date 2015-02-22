@@ -256,7 +256,7 @@ class LMTPServer(SMTPServer):
         try:
             txt = mail_to_txt(m)
         except Exception as e:
-            return "501 raised exception: %s" % (str(e))
+            return "501 malformed content: %s" % (str(e))
 
         for dst in rcpttos:
             try:
