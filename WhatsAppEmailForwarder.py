@@ -252,6 +252,11 @@ class LMTPServer(SMTPServer):
         m = Parser().parsestr(data)
         print "<= Mail: %s -> %s" % (mailfrom, rcpttos)
 
+        try:
+            txt = mail_to_txt(m)
+        except e:
+            return "501 raised exception: %s" % (str(e))
+
         for dst in rcpttos:
             parts = dst.split('@')[0].split('+', 1)
             if not (parts[0] == 'whatsapp' and len(parts) == 2):
@@ -259,10 +264,23 @@ class LMTPServer(SMTPServer):
                 return "501 malformed recipient: %s" % (dst)
 
             jid = normalizeJid(parts[1])
-            msg = TextMessageProtocolEntity(m.get_payload(), to = jid)
+            msg = TextMessageProtocolEntity(txt, to = jid)
             print "=> WhatsApp: -> %s" % (jid)
             self._yowsup.toLower(msg)
 
+
+def mail_to_txt(m):
+    if not m.is_multipart():
+        # simple case for text/plain
+        return m.get_payload()
+
+    else:
+        # handle when there are attachements (take first text/plain)
+        for pl in m._payload:
+            if "text/plain" in pl.get('Content-Type', None):
+                return pl.get_payload()
+
+        raise Exception("No text/plain found, but required by RFC 2046 5.1.4")
 
 def loadConfig():
     with open(config_file, 'rb') as fd:
