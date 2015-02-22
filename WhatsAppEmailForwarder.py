@@ -136,6 +136,9 @@ class MailLayer(YowInterfaceLayer):
 
         s = s_class(config.get('smtp'))
 
+        if config.get('smtp_user'):
+            s.login(config.get('smtp_user'), config.get('smtp_pass'))
+
         if not config.get('smtp_ssl'):
             try:
                 s.starttls() # Some servers require it, let's try
