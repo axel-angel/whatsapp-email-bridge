@@ -9,8 +9,8 @@ This means that this program:
      WhatsApp.
 
 == INSTALL
-You will need to install yowsup:
-    pip install yowsup2
+You will need to install yowsup and parse (python-parse in Debian):
+    pip install yowsup2 parse
 
 Then to configure this app, copy and edit the config file in YAML:
     cp whatsapp_config.example whatsapp_config
@@ -23,7 +23,7 @@ You need to fill in all fields, here is a little description:
         register, read:
             https://github.com/tgalal/yowsup/issues/195#issuecomment-29389646
     reply: The email address template that's used to reply to WhatsApp messages
-        forwarded by email, eg: myaccount+%s@gmail.com . Note that the %s is
+        forwarded by email, eg: myaccount+{}@gmail.com . Note that the {} is
         replaced by the destination phone number.
     smtp: The SMTP server used to forward WhatsApps messages, eg: gmail.com.
     force_starttls: use 0 to ignore if STARTTLS fails or 1 to abort

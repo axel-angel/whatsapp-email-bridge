@@ -25,6 +25,7 @@ import socket
 import time
 import asyncore
 import atexit
+from parse import parse
 from email.mime.text import MIMEText
 from email.parser import Parser
 from email.utils import formatdate
@@ -114,7 +115,7 @@ class MailLayer(YowInterfaceLayer):
         formattedDate = datetime.datetime.fromtimestamp(timestamp) \
                                          .strftime('%d/%m/%Y %H:%M')
 
-        replyAddr = config.get('reply') % (srcShort)
+        replyAddr = config.get('reply').format(srcShort)
 
         txt2 = "%s\n\nAt %s by %s (%s) isBroadCast=%s" \
                 % (txt, formattedDate, srcShort, mEntity.getParticipant(),
@@ -254,16 +255,17 @@ class LMTPServer(SMTPServer):
 
         try:
             txt = mail_to_txt(m)
-        except e:
+        except Exception as e:
             return "501 raised exception: %s" % (str(e))
 
         for dst in rcpttos:
-            parts = dst.split('@')[0].split('+', 1)
-            if not (parts[0] == 'whatsapp' and len(parts) == 2):
+            try:
+                (phone,) = parse(config.get('reply'), dst)
+            except TypeError:
                 print "malformed dst: %s" % (dst)
                 return "501 malformed recipient: %s" % (dst)
 
-            jid = normalizeJid(parts[1])
+            jid = normalizeJid(phone)
             msg = TextMessageProtocolEntity(txt, to = jid)
             print "=> WhatsApp: -> %s" % (jid)
             self._yowsup.toLower(msg)
