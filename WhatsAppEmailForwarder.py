@@ -134,7 +134,7 @@ class MailLayer(YowInterfaceLayer):
         else:
             s_class = smtplib.SMTP
 
-        s = s_class(config.get('smtp'))
+        s = s_class(config.get('smtp'), config.get('smtp_port', None))
 
         if config.get('smtp_user'):
             s.login(config.get('smtp_user'), config.get('smtp_pass'))

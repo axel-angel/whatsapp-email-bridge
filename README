@@ -26,6 +26,7 @@ You need to fill in all fields, here is a little description:
         forwarded by email, eg: myaccount+{}@gmail.com . Note that the {} is
         replaced by the destination phone number.
     smtp: The SMTP server used to forward WhatsApps messages, eg: gmail.com.
+    smtp_port: If specified, use this port for SMTP
     smtp_user: If specified, do SMTP auth with this user (requires smtp_pass)
     smtp_pass: and this password (requires smtp_user)
     force_starttls: use 0 to ignore if STARTTLS fails or 1 to abort

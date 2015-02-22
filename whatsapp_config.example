@@ -2,6 +2,7 @@ phone: "XXXXXXXXXXX"
 password: "XXXXXXXXXXXXXXXX"
 reply: "whatsapp+{}@example.com"
 smtp: "localhost"
+smtp_port:
 smtp_user:
 smtp_pass:
 sendto: "you@example.com"
