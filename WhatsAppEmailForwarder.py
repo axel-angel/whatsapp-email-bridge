@@ -129,17 +129,17 @@ class MailLayer(YowInterfaceLayer):
         msg['Subject'] = txt
         msg['Date'] = formatdate(timestamp)
 
-        if config.get('smtp_ssl'):
+        if config.get('smtp_ssl', False):
             s_class = smtplib.SMTP_SSL
         else:
             s_class = smtplib.SMTP
 
         s = s_class(config.get('smtp'), config.get('smtp_port', None))
 
-        if config.get('smtp_user'):
+        if config.get('smtp_user', None):
             s.login(config.get('smtp_user'), config.get('smtp_pass'))
 
-        if not config.get('smtp_ssl'):
+        if not config.get('smtp_ssl', False):
             try:
                 s.starttls() # Some servers require it, let's try
             except SMTPException:
