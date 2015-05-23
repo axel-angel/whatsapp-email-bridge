@@ -25,6 +25,7 @@ import socket
 import time
 import asyncore
 import atexit
+import tempfile
 from parse import parse
 from email.mime.text import MIMEText
 from email.parser import Parser
@@ -51,6 +52,9 @@ from yowsup.layers.protocol_media.protocolentities \
         import LocationMediaMessageProtocolEntity
 from yowsup.layers.protocol_media.protocolentities \
         import VCardMediaMessageProtocolEntity
+from yowsup.layers.protocol_media.protocolentities \
+        import RequestUploadIqProtocolEntity
+from yowsup.layers.protocol_media.mediauploader import MediaUploader
 from yowsup.layers.protocol_iq import YowIqProtocolLayer
 from yowsup.layers.protocol_messages import YowMessagesProtocolLayer
 from yowsup.layers.protocol_messages.protocolentities \
@@ -235,7 +239,6 @@ class LMTPServer(SMTPServer):
         channel = LMTPChannel(self, conn, addr)
 
     def process_message(self, peer, mailfrom, rcpttos, data):
-        # TODO: Add support for sending media as attached file
         m = Parser().parsestr(data)
         print "<= Mail: %s -> %s" % (mailfrom, rcpttos)
 
@@ -252,9 +255,95 @@ class LMTPServer(SMTPServer):
                 return "501 malformed recipient: %s" % (dst)
 
             jid = normalizeJid(phone)
-            msg = TextMessageProtocolEntity(txt, to = jid)
-            print "=> WhatsApp: -> %s" % (jid)
-            self._yowsup.toLower(msg)
+
+            # send text, if any
+            if len(txt.strip()) > 0:
+                msg = TextMessageProtocolEntity(txt, to = jid)
+                print "=> WhatsApp: -> %s" % (jid)
+                self._yowsup.toLower(msg)
+
+            # send media that were attached pieces
+            for pl in getattr(m, '_payload', []):
+                self.handle_forward_media(jid, pl)
+
+    def handle_forward_media(self, jid, pl):
+        ct = pl.get('Content-Type', 'None')
+        ct1 = ct.split('/', 1)[0]
+        iqtp = None
+        if ct1 == 'text':
+            return # this is the body, probably
+        if ct1 == 'image':
+            iqtp = RequestUploadIqProtocolEntity.MEDIA_TYPE_IMAGE
+        if ct1 == 'audio':
+            iqtp = RequestUploadIqProtocolEntity.MEDIA_TYPE_AUDIO
+        if ct1 == 'video':
+            iqtp = RequestUploadIqProtocolEntity.MEDIA_TYPE_VIDEO
+        if iqtp == None:
+            print "<= Mail: Skip unsupported attachement type %s" % (ct)
+            return
+
+        print "<= Mail: Forward attachement %s" % (ct1)
+        data = base64.b64decode(pl.get_payload())
+        tmpf = tempfile.NamedTemporaryFile(prefix='whatsapp-upload_',
+                delete=False)
+        tmpf.write(data)
+        tmpf.close()
+        fpath = tmpf.name
+        # FIXME: need to close the file!
+
+        entity = RequestUploadIqProtocolEntity(iqtp, filePath=fpath)
+        def successFn(successEntity, originalEntity):
+            return self.onRequestUploadResult(
+                    jid, fpath, successEntity, originalEntity)
+        def errorFn(errorEntity, originalEntity):
+            return self.onRequestUploadError(
+                    jid, fpath, errorEntity, originalEntity)
+
+        self._yowsup._sendIq(entity, successFn, errorFn)
+
+    def onRequestUploadResult(self, jid, fpath, successEntity, originalEntity):
+        if successEntity.isDuplicate():
+            url = successEntity.getUrl()
+            ip = successEntity.getIp()
+            print "<= WhatsApp: upload duplicate %s, from %s" % (fpath, url)
+            self.send_uploaded_media(fpath, jid, url, ip)
+        else:
+            ownjid = self._yowsup.getOwnJid()
+            mediaUploader = MediaUploader(jid, ownjid, fpath,
+                                      successEntity.getUrl(),
+                                      successEntity.getResumeOffset(),
+                                      self.onUploadSuccess,
+                                      self.onUploadError,
+                                      self.onUploadProgress,
+                                      async=False)
+            print "<= WhatsApp: start upload %s, into %s" \
+                    % (fpath, successEntity.getUrl())
+            mediaUploader.start()
+
+    def onUploadSuccess(self, fpath, jid, url):
+        print "WhatsApp: -> upload success %s" % (fpath)
+        self.send_uploaded_media(fpath, jid, url)
+
+    def onUploadError(self, fpath, jid=None, url=None):
+        print "WhatsApp: -> upload failed %s" % (fpath)
+        ownjid = self._yowsup.getOwnJid()
+        fakeEntity = TextMessageProtocolEntity("", _from = ownjid)
+        self._yowsup.sendEmail(fakeEntity, "WhatsApp upload failed",
+                "File: %s" % (fpath))
+
+    def onUploadProgress(self, fpath, jid, url, progress):
+        print "WhatsApp: -> upload progression %s for %s, %d%%" \
+                % (fpath, jid, progress)
+
+    def send_uploaded_media(self, fpath, jid, url, ip = None):
+        entity = ImageDownloadableMediaMessageProtocolEntity.fromFilePath(
+                fpath, url, ip, jid)
+        self._yowsup.toLower(entity)
+
+    def onRequestUploadError(self, jid, fpath, errorEntity, originalEntity):
+        print "WhatsApp: -> upload request failed %s" % (fpath)
+        self._yowsup.sendEmail(errorEntity, "WhatsApp upload request failed",
+                "File: %s" % (fpath))
 
 
 def mail_to_txt(m):
