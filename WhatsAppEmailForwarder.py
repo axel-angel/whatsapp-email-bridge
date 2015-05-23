@@ -165,6 +165,9 @@ class MailLayer(YowInterfaceLayer):
             url = mEntity.url
             print("<= WhatsApp: <- %s Image (%s)" % (src, url))
 
+            self.sendEmail(mEntity, "Image",
+                    "Image link: %s" % (url))
+
             receipt = OutgoingReceiptProtocolEntity(id, src)
             self.toLower(receipt)
 
@@ -173,6 +176,10 @@ class MailLayer(YowInterfaceLayer):
             lon = mEntity.getLongitude()
             print("<= WhatsApp: <- %s Location (%s, %s)" % (src, lat, lon))
 
+            uri = "geo:%s,%s?q=%s,%s(Location)" % (lat, lon, lat, lon)
+            self.sendEmail(mEntity, "Location",
+                    "GPS location: (%s, %s)\nURI: %s" % (lat, lon, uri))
+
             receipt = OutgoingReceiptProtocolEntity(id, src)
             self.toLower(receipt)
 
@@ -180,6 +187,9 @@ class MailLayer(YowInterfaceLayer):
             name = mEntity.getName()
             vcard = mEntity.getCardData()
             print("<= WhatsApp: <- %s vCard (%s)" % (src, vcard))
+
+            self.sendEmail(mEntity, "vCard",
+                    "vCard data: %s" % (vcard))
 
             receipt = OutgoingReceiptProtocolEntity(id, src)
             self.toLower(receipt)
