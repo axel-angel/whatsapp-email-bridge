@@ -160,47 +160,17 @@ class MailLayer(YowInterfaceLayer):
         id = mEntity.getId()
         src = mEntity.getFrom()
         tpe = mEntity.getMediaType()
+        url = getattr(mEntity, 'url', None)
 
-        if mEntity.getMediaType() == "image":
-            url = mEntity.url
-            print("<= WhatsApp: <- %s Image (%s)" % (src, url))
+        print("<= WhatsApp: <- Media %s (%s)" % (tpe, src))
 
-            content = "Image link: %s\n" % (url)
-            content += "Width: %s\n" % (mEntity.width)
-            content += "Height: %s\n" % (mEntity.height)
-            if mEntity.caption:
-                content += "Caption: %s\n" % (mEntity.caption)
+        content = "Received a media of type: %s\n" % (tpe)
+        content += "URL: %s\n" % (url)
+        content += str(mEntity)
+        self.sendEmail(mEntity, "Media: %s" % (tpe), content)
 
-            self.sendEmail(mEntity, "Image", content)
-
-            receipt = OutgoingReceiptProtocolEntity(id, src)
-            self.toLower(receipt)
-
-        elif mEntity.getMediaType() == "location":
-            lat = mEntity.getLatitude()
-            lon = mEntity.getLongitude()
-            print("<= WhatsApp: <- %s Location (%s, %s)" % (src, lat, lon))
-
-            uri = "geo:%s,%s?q=%s,%s(Location)" % (lat, lon, lat, lon)
-            self.sendEmail(mEntity, "Location",
-                    "GPS location: (%s, %s)\nURI: %s" % (lat, lon, uri))
-
-            receipt = OutgoingReceiptProtocolEntity(id, src)
-            self.toLower(receipt)
-
-        elif mEntity.getMediaType() == "vcard":
-            name = mEntity.getName()
-            vcard = mEntity.getCardData()
-            print("<= WhatsApp: <- %s vCard (%s)" % (src, vcard))
-
-            self.sendEmail(mEntity, "vCard",
-                    "vCard data: %s" % (vcard))
-
-            receipt = OutgoingReceiptProtocolEntity(id, src)
-            self.toLower(receipt)
-
-        else:
-            print("<= WhatsApp: <- %s Media (%s)" % (tpe, src))
+        receipt = OutgoingReceiptProtocolEntity(id, src)
+        self.toLower(receipt)
 
 
 class YowsupMyStack(object):
