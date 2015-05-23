@@ -109,7 +109,13 @@ class MailLayer(YowInterfaceLayer):
         replyAddr = config.get('reply').format(srcShort)
         dst = config.get('sendto')
 
-        msg = MIMEText(content, 'plain', 'utf-8')
+        formattedDate = datetime.datetime.fromtimestamp(timestamp) \
+                                         .strftime('%d/%m/%Y %H:%M')
+        content2 = "%s\n\nAt %s by %s (%s) isBroadCast=%s" \
+                % (content, formattedDate, srcShort, mEntity.getParticipant(),
+                    mEntity.isBroadcast())
+
+        msg = MIMEText(content2, 'plain', 'utf-8')
         msg['To'] = "WhatsApp <%s>" % (dst)
         msg['From'] = "%s <%s>" % (srcShort, mEntity.getParticipant())
         msg['Reply-To'] = "%s <%s>" % (mEntity.getParticipant(), replyAddr)
@@ -145,16 +151,8 @@ class MailLayer(YowInterfaceLayer):
         src = mEntity.getFrom()
         print("<= WhatsApp: <- %s Message" % (src))
 
-        timestamp = mEntity.getTimestamp()
-        formattedDate = datetime.datetime.fromtimestamp(timestamp) \
-                                         .strftime('%d/%m/%Y %H:%M')
-        srcShort = mEntity.getFrom(full = False)
-        txt = mEntity.getBody()
-        txt2 = "%s\n\nAt %s by %s (%s) isBroadCast=%s" \
-                % (txt, formattedDate, srcShort, mEntity.getParticipant(),
-                    mEntity.isBroadcast())
-
-        self.sendEmail(mEntity, txt, txt2)
+        content = mEntity.getBody()
+        self.sendEmail(mEntity, content, content)
         self.toLower(receipt)
 
     def onMediaMessage(self, mEntity):
