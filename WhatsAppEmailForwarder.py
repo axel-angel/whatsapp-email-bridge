@@ -58,8 +58,9 @@ from yowsup.layers.protocol_messages.protocolentities \
 from yowsup.layers.protocol_receipts import YowReceiptProtocolLayer
 from yowsup.layers.protocol_receipts.protocolentities \
         import OutgoingReceiptProtocolEntity
+from yowsup.layers.protocol_presence import YowPresenceProtocolLayer
 from yowsup.layers.stanzaregulator import YowStanzaRegulator
-from yowsup.stacks import YowStack
+from yowsup.stacks import YowStack, YOWSUP_CORE_LAYERS
 
 config_file = 'whatsapp_config'
 
@@ -160,13 +161,17 @@ class MailLayer(YowInterfaceLayer):
         src = mEntity.getFrom()
         tpe = mEntity.getMediaType()
 
-        # TODO: Send media email for these
         if mEntity.getMediaType() == "image":
             url = mEntity.url
             print("<= WhatsApp: <- %s Image (%s)" % (src, url))
 
-            self.sendEmail(mEntity, "Image",
-                    "Image link: %s" % (url))
+            content = "Image link: %s\n" % (url)
+            content += "Width: %s\n" % (mEntity.width)
+            content += "Height: %s\n" % (mEntity.height)
+            if mEntity.caption:
+                content += "Caption: %s\n" % (mEntity.caption)
+
+            self.sendEmail(mEntity, "Image", content)
 
             receipt = OutgoingReceiptProtocolEntity(id, src)
             self.toLower(receipt)
@@ -205,13 +210,9 @@ class YowsupMyStack(object):
             MailLayer,
             (YowAuthenticationProtocolLayer, YowMessagesProtocolLayer,
                 YowReceiptProtocolLayer, YowAckProtocolLayer,
-                YowMediaProtocolLayer, YowIqProtocolLayer),
-            YowLoggerLayer,
-            YowCoderLayer,
-            YowCryptLayer,
-            YowStanzaRegulator,
-            YowNetworkLayer
-        )
+                YowMediaProtocolLayer, YowIqProtocolLayer,
+                YowPresenceProtocolLayer)
+            ) + YOWSUP_CORE_LAYERS
 
         self.stack = YowStack(layers)
         self.stack.setProp(YowAuthenticationProtocolLayer.PROP_CREDENTIALS,
