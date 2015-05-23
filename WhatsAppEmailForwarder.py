@@ -103,31 +103,17 @@ class MailLayer(YowInterfaceLayer):
                 entity.getType(), entity.getFrom())
         self.toLower(ack)
 
-    def onTextMessage(self, mEntity):
-        receipt = OutgoingReceiptProtocolEntity(mEntity.getId(),
-                mEntity.getFrom())
-
-        txt = mEntity.getBody()
-        src = mEntity.getFrom()
-        srcShort = mEntity.getFrom(full = False)
-        print("<= WhatsApp: <- %s Message" % (src))
-
+    def sendEmail(self, mEntity, subject, content):
         timestamp = mEntity.getTimestamp()
-        formattedDate = datetime.datetime.fromtimestamp(timestamp) \
-                                         .strftime('%d/%m/%Y %H:%M')
-
+        srcShort = mEntity.getFrom(full = False)
         replyAddr = config.get('reply').format(srcShort)
-
-        txt2 = "%s\n\nAt %s by %s (%s) isBroadCast=%s" \
-                % (txt, formattedDate, srcShort, mEntity.getParticipant(),
-                    mEntity.isBroadcast())
-
         dst = config.get('sendto')
-        msg = MIMEText(txt2, 'plain', 'utf-8')
+
+        msg = MIMEText(content, 'plain', 'utf-8')
         msg['To'] = "WhatsApp <%s>" % (dst)
         msg['From'] = "%s <%s>" % (srcShort, mEntity.getParticipant())
         msg['Reply-To'] = "%s <%s>" % (mEntity.getParticipant(), replyAddr)
-        msg['Subject'] = txt
+        msg['Subject'] = subject
         msg['Date'] = formatdate(timestamp)
 
         if config.get('smtp_ssl', False):
@@ -152,6 +138,23 @@ class MailLayer(YowInterfaceLayer):
         s.quit()
         print "=> Mail: %s -> %s" % (replyAddr, dst)
 
+    def onTextMessage(self, mEntity):
+        receipt = OutgoingReceiptProtocolEntity(mEntity.getId(),
+                mEntity.getFrom())
+
+        src = mEntity.getFrom()
+        print("<= WhatsApp: <- %s Message" % (src))
+
+        timestamp = mEntity.getTimestamp()
+        formattedDate = datetime.datetime.fromtimestamp(timestamp) \
+                                         .strftime('%d/%m/%Y %H:%M')
+        srcShort = mEntity.getFrom(full = False)
+        txt = mEntity.getBody()
+        txt2 = "%s\n\nAt %s by %s (%s) isBroadCast=%s" \
+                % (txt, formattedDate, srcShort, mEntity.getParticipant(),
+                    mEntity.isBroadcast())
+
+        self.sendEmail(mEntity, txt, txt2)
         self.toLower(receipt)
 
     def onMediaMessage(self, mEntity):
