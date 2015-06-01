@@ -31,6 +31,7 @@ from email.mime.text import MIMEText
 from email.parser import Parser
 from email.utils import formatdate
 from smtpd import SMTPChannel, SMTPServer
+from html2text import html2text
 
 from yowsup.common import YowConstants
 from yowsup import env
@@ -357,6 +358,9 @@ def mail_to_txt(m):
         for pl in m._payload:
             if "text/plain" in pl.get('Content-Type', None):
                 return pl.get_payload()
+        for pl in m._payload:
+            if "text/html" in pl.get('Content-Type', None):
+                return html2text(pl.get_payload())
 
         raise Exception("No text/plain found, but required by RFC 2046 5.1.4")
 
