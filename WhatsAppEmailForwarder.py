@@ -263,8 +263,9 @@ class LMTPServer(SMTPServer):
                 self._yowsup.toLower(msg)
 
             # send media that were attached pieces
-            for pl in getattr(m, '_payload', []):
-                self.handle_forward_media(jid, pl)
+            if m.is_multipart():
+                for pl in getattr(m, '_payload', []):
+                    self.handle_forward_media(jid, pl)
 
     def handle_forward_media(self, jid, pl):
         ct = pl.get('Content-Type', 'None')
