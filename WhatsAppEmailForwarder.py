@@ -280,6 +280,9 @@ class LMTPServer(SMTPServer):
             iqtp = RequestUploadIqProtocolEntity.MEDIA_TYPE_AUDIO
         if ct1 == 'video':
             iqtp = RequestUploadIqProtocolEntity.MEDIA_TYPE_VIDEO
+        if ct.startswith('multipart/alternative'): # recursive content
+            for pl2 in pl._payload:
+                self.handle_forward_media(jid, pl2)
         if iqtp == None:
             print "<= Mail: Skip unsupported attachement type %s" % (ct)
             return
@@ -358,11 +361,19 @@ def mail_to_txt(m):
         for pl in m._payload:
             if "text/plain" in pl.get('Content-Type', None):
                 return pl.get_payload()
+        # otherwise take first text/html
         for pl in m._payload:
             if "text/html" in pl.get('Content-Type', None):
                 return html2text(pl.get_payload())
+        # otherwise search into recursive message
+        for pl in m._payload:
+            try:
+                if "multipart/alternative" in pl.get('Content-Type', None):
+                    return mail_to_txt(pl)
+            except:
+                continue # continue to next attachment
 
-        raise Exception("No text/plain found, but required by RFC 2046 5.1.4")
+        raise Exception("No text could be extracted found")
 
 def loadConfig():
     with open(config_file, 'rb') as fd:
