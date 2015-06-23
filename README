@@ -9,8 +9,8 @@ This means that this program:
      WhatsApp.
 
 == INSTALL
-You will need to install yowsup and parse (python-parse in Debian):
-    pip install yowsup2 parse
+You will need to install yowsup and the dependencies:
+    pip install yowsup2 python-axolotl parse
 
 Then to configure this app, copy and edit the config file in YAML:
     cp config.yaml.example config.yaml

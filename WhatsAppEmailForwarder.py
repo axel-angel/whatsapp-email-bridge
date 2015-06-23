@@ -37,7 +37,6 @@ from yowsup.common import YowConstants
 from yowsup import env
 from yowsup.layers.auth import YowCryptLayer, YowAuthenticationProtocolLayer, \
         AuthError
-from yowsup.layers.axolotl import YowAxolotlLayer
 from yowsup.layers.coder import YowCoderLayer
 from yowsup.layers import YowLayerEvent
 from yowsup.layers.interface import YowInterfaceLayer, ProtocolEntityCallback
