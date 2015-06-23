@@ -278,7 +278,7 @@ class MailServer(SMTPServer):
             return
 
         print "<= Mail: Forward attachement %s" % (ct1)
-        data = base64.b64decode(pl.get_payload())
+        data = mail_payload_decoded(pl)
         tmpf = tempfile.NamedTemporaryFile(prefix='whatsapp-upload_',
                 delete=False)
         tmpf.write(data)
@@ -377,20 +377,26 @@ class YoSMTPServer(MailServer):
             raise
 
 
+def mail_payload_decoded(pl):
+    t = pl.get_payload()
+    if pl.get('Content-Transfer-Encoding', None) == "base64":
+        t = base64.b64decode(t)
+    return t
+
 def mail_to_txt(m):
     if not m.is_multipart():
         # simple case for text/plain
-        return m.get_payload()
+        return mail_payload_decoded(m)
 
     else:
         # handle when there are attachements (take first text/plain)
         for pl in m._payload:
             if "text/plain" in pl.get('Content-Type', None):
-                return pl.get_payload()
+                return mail_payload_decoded(pl)
         # otherwise take first text/html
         for pl in m._payload:
             if "text/html" in pl.get('Content-Type', None):
-                return html2text(pl.get_payload())
+                return html2text(mail_payload_decoded(pl))
         # otherwise search into recursive message
         for pl in m._payload:
             try:
