@@ -67,8 +67,6 @@ from yowsup.layers.protocol_presence import YowPresenceProtocolLayer
 from yowsup.layers.stanzaregulator import YowStanzaRegulator
 from yowsup.stacks import YowStack, YOWSUP_CORE_LAYERS
 
-config_file = 'whatsapp_config'
-
 
 class MailLayer(YowInterfaceLayer):
     def __init__(self):
@@ -375,8 +373,8 @@ def mail_to_txt(m):
 
         raise Exception("No text could be extracted found")
 
-def loadConfig():
-    with open(config_file, 'rb') as fd:
+def loadConfig(fpath):
+    with open(fpath, 'rb') as fd:
         config = yaml.load(fd)
         return config
 
@@ -395,8 +393,14 @@ def clean_socket():
         pass
 
 if __name__ == "__main__":
-    print "Parsing config"
-    config = loadConfig()
+    import argparse
+    p = argparse.ArgumentParser()
+    p.add_argument('--config', default='config.yaml',
+            help='configuration file path')
+    args = p.parse_args()
+
+    print "Parsing config: %s" % (args.config)
+    config = loadConfig(args.config)
 
     print "Starting"
     stack = YowsupMyStack((config.get('phone'), config.get('password')))
