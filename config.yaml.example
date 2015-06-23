@@ -1,11 +1,21 @@
-phone: "XXXXXXXXXXX"
-password: "XXXXXXXXXXXXXXXX"
 reply: "whatsapp+{}@example.com"
-smtp: "localhost"
-smtp_port:
-smtp_user:
-smtp_pass:
-sendto: "you@example.com"
-force_starttls: 0
-smtp_ssl: 0
-socket: "/home/you/whatsapp.sock"
+whatsapp:
+    phone: "XXXXXXXXXXX"
+    password: "XXXXXXXXXXXXXXXX"
+outgoing:
+    with: SMTP
+    host: "smtp.gmail.com"
+    port: 465
+    user: myuser
+    pass: mypass
+    sendto: "myuser@gmail.com"
+    ssl: 1
+    force_starttls: 0
+ingoing:
+    # create an SMTP server
+    with: SMTP
+    host: localhost
+    port: 25
+    # create an LMTP server
+    #with: LMTP
+    #socket: "/home/you/whatsapp.sock"

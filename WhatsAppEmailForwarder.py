@@ -74,8 +74,17 @@ class MailLayer(YowInterfaceLayer):
 
     def startInputThread(self):
         print "Starting input thread"
-        server = LMTPServer(self, config.get('socket'), None)
-        atexit.register(clean_socket)
+        confinc = config['ingoing']
+        if confinc['with'] == "LMTP":
+            sockpath = confinc['socket']
+            server = YoLMTPServer(self, sockpath, None)
+            atexit.register(clean_lmtp)
+        elif confinc['with'] == "SMTP":
+            host = confinc['host']
+            port = confinc['port']
+            server = YoSMTPServer(self, (host, port), None)
+        else:
+            raise Exception("Unknown ingoing type")
 
     @ProtocolEntityCallback("success")
     def onSuccess(self, entity):
@@ -109,8 +118,8 @@ class MailLayer(YowInterfaceLayer):
     def sendEmail(self, mEntity, subject, content):
         timestamp = mEntity.getTimestamp()
         srcShort = mEntity.getFrom(full = False)
-        replyAddr = config.get('reply').format(srcShort)
-        dst = config.get('sendto')
+        replyAddr = config['reply'].format(srcShort)
+        dst = config['outgoing']['sendto']
 
         formattedDate = datetime.datetime.fromtimestamp(timestamp) \
                                          .strftime('%d/%m/%Y %H:%M')
@@ -125,22 +134,23 @@ class MailLayer(YowInterfaceLayer):
         msg['Subject'] = subject
         msg['Date'] = formatdate(timestamp)
 
-        if config.get('smtp_ssl', False):
+        confout = config['outgoing']
+        if confout.get('ssl', False):
             s_class = smtplib.SMTP_SSL
         else:
             s_class = smtplib.SMTP
 
-        s = s_class(config.get('smtp'), config.get('smtp_port', None))
+        s = s_class(confout['host'], confout.get('port', 25))
 
-        if config.get('smtp_user', None):
-            s.login(config.get('smtp_user'), config.get('smtp_pass'))
+        if confout.get('smtp_user', None):
+            s.login(confout.get('smtp_user'), confout.get('smtp_pass'))
 
-        if not config.get('smtp_ssl', False):
+        if not confout.get('force_startssl', True):
             try:
                 s.starttls() # Some servers require it, let's try
-            except SMTPException:
+            except smtplib.SMTPException:
                 print "<= Mail: Server doesn't support STARTTLS"
-                if config.get('force_starttls'):
+                if confout.get('force_starttls'):
                     raise
 
         s.sendmail(dst, [dst], msg.as_string())
@@ -214,24 +224,7 @@ class LMTPChannel(SMTPChannel):
     self.smtp_HELO(arg)
 
 
-class LMTPServer(SMTPServer):
-    def __init__(self, yowsup, localaddr, remoteaddr):
-        # code taken from original SMTPServer code
-        self._yowsup = yowsup
-        self._localaddr = localaddr
-        self._remoteaddr = remoteaddr
-        asyncore.dispatcher.__init__(self)
-        try:
-            self.create_socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            # try to re-use a server port if possible
-            self.set_reuse_addr()
-            self.bind(localaddr)
-            self.listen(5)
-        except:
-            # cleanup asyncore.socket_map before raising
-            self.close()
-            raise
-
+class MailServer(SMTPServer):
     def handle_accept(self):
         conn, addr = self.accept()
         channel = LMTPChannel(self, conn, addr)
@@ -347,6 +340,42 @@ class LMTPServer(SMTPServer):
         self._yowsup.sendEmail(errorEntity, "WhatsApp upload request failed",
                 "File: %s" % (fpath))
 
+class YoLMTPServer(MailServer):
+    def __init__(self, yowsup, localaddr, remoteaddr):
+        # code taken from original SMTPServer code
+        self._yowsup = yowsup
+        self._localaddr = localaddr
+        self._remoteaddr = remoteaddr
+        asyncore.dispatcher.__init__(self)
+        try:
+            self.create_socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            # try to re-use a server port if possible
+            self.set_reuse_addr()
+            self.bind(localaddr)
+            self.listen(5)
+        except:
+            # cleanup asyncore.socket_map before raising
+            self.close()
+            raise
+
+class YoSMTPServer(MailServer):
+    def __init__(self, yowsup, localaddr, remoteaddr):
+        # code taken from original SMTPServer code
+        self._yowsup = yowsup
+        self._localaddr = localaddr
+        self._remoteaddr = remoteaddr
+        asyncore.dispatcher.__init__(self)
+        try:
+            self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+            # try to re-use a server port if possible
+            self.set_reuse_addr()
+            self.bind(localaddr)
+            self.listen(5)
+        except:
+            # cleanup asyncore.socket_map before raising
+            self.close()
+            raise
+
 
 def mail_to_txt(m):
     if not m.is_multipart():
@@ -385,9 +414,9 @@ def normalizeJid(number):
 
     return "%s@s.whatsapp.net" % number
 
-def clean_socket():
+def clean_lmtp():
     try:
-        os.unlink(config.get('socket'))
+        os.unlink(config['ingoing'].get('socket'))
     except OSError:
         pass
 
@@ -402,7 +431,8 @@ if __name__ == "__main__":
     config = loadConfig(args.config)
 
     print "Starting"
-    stack = YowsupMyStack((config.get('phone'), config.get('password')))
+    confwhats = config['whatsapp']
+    stack = YowsupMyStack((confwhats.get('phone'), confwhats.get('password')))
     print "Connecting"
     try:
         stack.start()
