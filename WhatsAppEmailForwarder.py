@@ -130,9 +130,9 @@ class MailLayer(YowInterfaceLayer):
         msg = MIMEText(content2, 'plain', 'utf-8')
         msg['To'] = "WhatsApp <%s>" % (dst)
         msg['From'] = "%s <%s>" % (srcShort, mEntity.getParticipant())
+        msg['Date'] = formatdate(timestamp)
         msg['Reply-To'] = "%s <%s>" % (mEntity.getParticipant(), replyAddr)
         msg['Subject'] = subject
-        msg['Date'] = formatdate(timestamp)
 
         confout = config['outgoing']
         if confout.get('ssl', False):
