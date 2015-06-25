@@ -21,6 +21,7 @@ import smtplib
 import base64
 import yaml
 import threading
+import Queue
 import socket
 import time
 import asyncore
@@ -70,21 +71,6 @@ from yowsup.stacks import YowStack, YOWSUP_CORE_LAYERS
 class MailLayer(YowInterfaceLayer):
     def __init__(self):
         YowInterfaceLayer.__init__(self)
-        self.startInputThread()
-
-    def startInputThread(self):
-        print "Starting input thread"
-        confinc = config['ingoing']
-        if confinc['with'] == "LMTP":
-            sockpath = confinc['socket']
-            server = YoLMTPServer(self, sockpath, None)
-            atexit.register(clean_lmtp)
-        elif confinc['with'] == "SMTP":
-            host = confinc['host']
-            port = confinc['port']
-            server = YoSMTPServer(self, (host, port), None)
-        else:
-            raise Exception("Unknown ingoing type")
 
     @ProtocolEntityCallback("success")
     def onSuccess(self, entity):
@@ -188,8 +174,9 @@ class MailLayer(YowInterfaceLayer):
 class YowsupMyStack(object):
     def __init__(self, credentials):
         env.CURRENT_ENV = env.S40YowsupEnv()
+        self.layer = MailLayer()
         layers = (
-            MailLayer,
+            self.layer,
             (YowAuthenticationProtocolLayer, YowMessagesProtocolLayer,
                 YowReceiptProtocolLayer, YowAckProtocolLayer,
                 YowMediaProtocolLayer, YowIqProtocolLayer,
@@ -205,12 +192,38 @@ class YowsupMyStack(object):
         self.stack.setProp(YowCoderLayer.PROP_RESOURCE,
                 env.CURRENT_ENV.getResource())
 
+    def startInputThread(self):
+        print "Starting input thread"
+        confinc = config['ingoing']
+        if confinc['with'] == "LMTP":
+            sockpath = confinc['socket']
+            self.server = YoLMTPServer(self.layer, sockpath, None)
+            atexit.register(clean_lmtp)
+        elif confinc['with'] == "SMTP":
+            host = confinc['host']
+            port = confinc['port']
+            self.server = YoSMTPServer(self.layer, (host, port), None)
+        elif confinc['with'] == "POP3":
+           self.server = Pop3Client(self.layer, confinc)
+        elif confinc['with'] == "IMAP":
+           self.server = ImapClient(self.layer, confinc)
+        else:
+            raise Exception("Unknown ingoing type")
+
+
     def start(self):
+
+        self.startInputThread()
+        self.server.start()
+
         self.stack.broadcastEvent(
                 YowLayerEvent(YowNetworkLayer.EVENT_STATE_CONNECT))
 
         try:
-            self.stack.loop()
+            while True:
+                self.stack.loop( timeout = 10, count = 1 )
+                while self.server.loop():
+                    pass
         except AuthError as e:
             print("Authentication Error: %s" % e.message)
 
@@ -224,29 +237,35 @@ class LMTPChannel(SMTPChannel):
     self.smtp_HELO(arg)
 
 
-class MailServer(SMTPServer):
-    def handle_accept(self):
-        conn, addr = self.accept()
-        channel = LMTPChannel(self, conn, addr)
+class MailParserMixin():
 
-    def process_message(self, peer, mailfrom, rcpttos, data):
+    def __init__(self, yowsup):
+        self._yowsup = yowsup
+
+    def send_yowsup(self, phone, data):
         m = Parser().parsestr(data)
-        print "<= Mail: %s -> %s" % (mailfrom, rcpttos)
-
         try:
             txt = mail_to_txt(m)
         except Exception as e:
             return "501 malformed content: %s" % (str(e))
 
-        for dst in rcpttos:
-            try:
-                (phone,) = parse(config.get('reply'), dst)
-            except TypeError:
-                print "malformed dst: %s" % (dst)
-                return "501 malformed recipient: %s" % (dst)
+        jid = normalizeJid(phone)
 
+        # send text, if any
+        if len(txt.strip()) > 0:
+            msg = TextMessageProtocolEntity(txt, to = jid)
+            print "=> WhatsApp: -> %s" % (jid)
+            self._yowsup.toLower(msg)
+
+        # send media that were attached pieces
+        if m.is_multipart():
+            for pl in getattr(m, '_payload', []):
+                self.handle_forward_media(jid, pl)
+        return False
+
+
+    def handle_forward_media(self, jid, pl):
             jid = normalizeJid(phone)
-
             # send text, if any
             if len(txt.strip()) > 0:
                 msg = TextMessageProtocolEntity(txt, to = jid)
@@ -339,6 +358,107 @@ class MailServer(SMTPServer):
         print "WhatsApp: -> upload request failed %s" % (fpath)
         self._yowsup.sendEmail(errorEntity, "WhatsApp upload request failed",
                 "File: %s" % (fpath))
+
+class NetClient( MailParserMixin ):
+    def __init__(self, yowsup, confinc):
+        self.host = confinc['host']
+        self.port = confinc['port']
+        self.user = confinc['user']
+        self.password = confinc['pass']
+        self.dest = confinc['dest']
+        if 'delay' in confinc:
+            self.delay = confinc['delay']
+        else:
+            self.delay = 360
+        self.use_ssl = ( 'use_ssl' in confinc )
+
+        self.messageQueue = Queue.Queue()
+        self._yowsup = yowsup
+        self.thread = threading.Thread(target=self.worker)
+
+    def start(self):
+        self.thread.daemon = True
+        self.thread.start()
+
+    def loop(self):
+        try:
+            while True:
+                msg = self.messageQueue.get(False)
+                if not msg:
+                    break
+                self.send_yowsup(self.dest, msg)
+        except Queue.Empty:
+            pass
+
+class Pop3Client( NetClient ):
+
+    def worker(self):
+        import poplib
+        while True:
+            if self.use_ssl:
+                M = poplib.POP3_SSL( self.host, self.port )
+            else:
+                M = poplib.POP3( self.host, self.port )
+            M.user( self.user )
+            M.pass_( self.password )
+            numMessages = len( M.list()[ 1 ] )
+            for mList in range(numMessages) :
+                for msg in M.retr( mList + 1 )[1]:
+                    self.messageQueue.put( msg )
+                # to avoid resending
+                M.dele( mList + 1 )
+            time.sleep( self.delay )
+
+class ImapClient( NetClient ):
+
+    def worker(self):
+        import imaplib
+        while True:
+            if self.use_ssl:
+                M = imaplib.IMAP4_SSL( self.host, self.port )
+            else:
+                M = imaplib.IMAP4( self.host, self.port )
+            M.login( self.user, self.password )
+            M.select()
+            typ, data = M.search( None, '(UNSEEN)' )
+            for num in data[0].split():
+                typ, data = M.fetch(num, '(RFC822)')
+                self.messageQueue.put( data[0][1] )
+            M.close()
+            M.logout()
+            time.sleep( self.delay )
+        
+
+
+class MailServer(SMTPServer, MailParserMixin):
+
+    def start(self):
+        pass 
+
+    def handle_accept(self):
+        conn, addr = self.accept()
+        channel = LMTPChannel(self, conn, addr)
+
+    def process_message(self, peer, mailfrom, rcpttos, data):
+        m = Parser().parsestr(data)
+        print "<= Mail: %s -> %s" % (mailfrom, rcpttos)
+
+        try:
+            txt = mail_to_txt(m)
+        except Exception as e:
+            return "501 malformed content: %s" % (str(e))
+
+        for dst in rcpttos:
+            try:
+                (phone,) = parse(config.get('reply'), dst)
+            except TypeError:
+                print "malformed dst: %s" % (dst)
+                return "501 malformed recipient: %s" % (dst)
+
+            ret = self.send_yowsup(phone, data)
+            if ret:
+                return ret
+
 
 class YoLMTPServer(MailServer):
     def __init__(self, yowsup, localaddr, remoteaddr):
