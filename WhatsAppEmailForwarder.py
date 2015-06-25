@@ -116,7 +116,9 @@ class MailLayer(YowInterfaceLayer):
         self.toLower(ack)
 
     def sendEmail(self, mEntity, subject, content):
-        timestamp = mEntity.getTimestamp()
+        timestamp = catch(lambda: mEntity.getTimestamp(), time.time())
+        participant = catch(lambda: mEntity.getParticipant(), "N/A")
+        isbroadcast = catch(lambda: mEntity.isBroadcast(), False)
         srcShort = mEntity.getFrom(full = False)
         replyAddr = config['reply'].format(srcShort)
         dst = config['outgoing']['sendto']
@@ -124,14 +126,14 @@ class MailLayer(YowInterfaceLayer):
         formattedDate = datetime.datetime.fromtimestamp(timestamp) \
                                          .strftime('%d/%m/%Y %H:%M')
         content2 = "%s\n\nAt %s by %s (%s) isBroadCast=%s" \
-                % (content, formattedDate, srcShort, mEntity.getParticipant(),
-                    mEntity.isBroadcast())
+                % (content, formattedDate, srcShort, participant,
+                    isbroadcast)
 
         msg = MIMEText(content2, 'plain', 'utf-8')
         msg['To'] = "WhatsApp <%s>" % (dst)
-        msg['From'] = "%s <%s>" % (srcShort, mEntity.getParticipant())
+        msg['From'] = "%s <%s>" % (srcShort, participant)
         msg['Date'] = formatdate(timestamp)
-        msg['Reply-To'] = "%s <%s>" % (mEntity.getParticipant(), replyAddr)
+        msg['Reply-To'] = "%s <%s>" % (participant, replyAddr)
         msg['Subject'] = subject
 
         confout = config['outgoing']
@@ -425,6 +427,12 @@ def clean_lmtp():
         os.unlink(config['ingoing'].get('socket'))
     except OSError:
         pass
+
+def catch(f, default):
+    try:
+        return f()
+    except:
+        return default
 
 if __name__ == "__main__":
     import argparse
