@@ -17,10 +17,10 @@
 
 import os, signal
 import datetime, sys
-import smtplib
+import smtplib, poplib, imaplib
 import base64
 import yaml
-import threading
+import threading # FIXME: not needed with asyncore
 import Queue
 import socket
 import time
@@ -121,7 +121,7 @@ class MailLayer(YowInterfaceLayer):
         msg['Date'] = formatdate(timestamp)
 
         confout = config['outgoing']
-        if confout.get('ssl', False):
+        if confout.get('ssl', True):
             s_class = smtplib.SMTP_SSL
         else:
             s_class = smtplib.SMTP
@@ -212,7 +212,6 @@ class YowsupMyStack(object):
 
 
     def start(self):
-
         self.startInputThread()
         self.server.start()
 
@@ -221,7 +220,7 @@ class YowsupMyStack(object):
 
         try:
             while True:
-                self.stack.loop( timeout = 10, count = 1 )
+                self.stack.loop(timeout = 10, count = 1)
                 while self.server.loop():
                     pass
         except AuthError as e:
@@ -238,9 +237,11 @@ class LMTPChannel(SMTPChannel):
 
 
 class MailParserMixin():
-
     def __init__(self, yowsup):
         self._yowsup = yowsup
+
+    def loop(self): # FIXME: threads aren't needed with asyncore
+        pass
 
     def send_yowsup(self, phone, data):
         m = Parser().parsestr(data)
@@ -359,81 +360,89 @@ class MailParserMixin():
         self._yowsup.sendEmail(errorEntity, "WhatsApp upload request failed",
                 "File: %s" % (fpath))
 
-class NetClient( MailParserMixin ):
+
+class NetClient(MailParserMixin):
     def __init__(self, yowsup, confinc):
         self.host = confinc['host']
         self.port = confinc['port']
         self.user = confinc['user']
         self.password = confinc['pass']
         self.dest = confinc['dest']
-        if 'delay' in confinc:
-            self.delay = confinc['delay']
-        else:
-            self.delay = 360
-        self.use_ssl = ( 'use_ssl' in confinc )
+        self.poll_wait = confinc.get('poll_wait', 360)
+        self.ssl = confinc.get('ssl', True)
 
         self.messageQueue = Queue.Queue()
         self._yowsup = yowsup
+        # FIXME: use asyncore instead
         self.thread = threading.Thread(target=self.worker)
 
     def start(self):
         self.thread.daemon = True
         self.thread.start()
 
-    def loop(self):
+    def loop(self): # FIXME: threads aren't needed with asyncore
         try:
             while True:
-                msg = self.messageQueue.get(False)
+                msg = self.messageQueue.get(block=False)
                 if not msg:
                     break
                 self.send_yowsup(self.dest, msg)
         except Queue.Empty:
             pass
 
-class Pop3Client( NetClient ):
 
+class Pop3Client(NetClient):
     def worker(self):
-        import poplib
         while True:
-            if self.use_ssl:
-                M = poplib.POP3_SSL( self.host, self.port )
+            if self.ssl:
+                pop_class = poplib.POP3_SSL
             else:
-                M = poplib.POP3( self.host, self.port )
-            M.user( self.user )
-            M.pass_( self.password )
-            numMessages = len( M.list()[ 1 ] )
-            for mList in range(numMessages) :
-                for msg in M.retr( mList + 1 )[1]:
-                    self.messageQueue.put( msg )
+                pop_class = poplib.POP3
+
+            pop3 = pop_class(self.host, self.port)
+            pop3.user(self.user)
+            pop3.pass_(self.password)
+
+            numMessages = len(pop3.list()[1])
+            for midx in range(1, numMessages+1):
+                print "<= POP3: Mail id %i" % (midx)
+                for msg in pop3.retr(midx)[1]:
+                    self.messageQueue.put(msg)
                 # to avoid resending
-                M.dele( mList + 1 )
-            time.sleep( self.delay )
+                pop3.dele(midx) # FIXME: shouldn't delete message
 
-class ImapClient( NetClient ):
+            pop3.quit()
 
+            time.sleep(self.poll_wait)
+
+
+class ImapClient(NetClient):
     def worker(self):
-        import imaplib
         while True:
-            if self.use_ssl:
-                M = imaplib.IMAP4_SSL( self.host, self.port )
+            if self.ssl:
+                imap_class = imaplib.IMAP4_SSL
             else:
-                M = imaplib.IMAP4( self.host, self.port )
-            M.login( self.user, self.password )
-            M.select()
-            typ, data = M.search( None, '(UNSEEN)' )
+                imap_class = imaplib.IMAP4
+
+            imap = imaplib.IMAP4_SSL(self.host, self.port)
+            imap.login(self.user, self.password)
+            imap.select()
+
+            typ, data = imap.search(None, '(UNSEEN)')
             for num in data[0].split():
-                typ, data = M.fetch(num, '(RFC822)')
-                self.messageQueue.put( data[0][1] )
-            M.close()
-            M.logout()
-            time.sleep( self.delay )
-        
+                print "<= IMAP: Mail id %s" % (num)
+                typ, data = imap.fetch(num, '(RFC822)')
+                self.messageQueue.put(data[0][1])
+
+            imap.close()
+            imap.logout()
+
+            time.sleep(self.poll_wait)
 
 
 class MailServer(SMTPServer, MailParserMixin):
-
     def start(self):
-        pass 
+        pass
 
     def handle_accept(self):
         conn, addr = self.accept()
