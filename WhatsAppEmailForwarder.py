@@ -100,14 +100,10 @@ class MailLayer(YowInterfaceLayer):
 
     @ProtocolEntityCallback("message")
     def onMessage(self, mEntity):
-        if not mEntity.isGroupMessage():
-            if mEntity.getType() == 'text':
-                self.onTextMessage(mEntity)
-            elif mEntity.getType() == 'media':
-                self.onMediaMessage(mEntity)
-        else:
-            src = mEntity.getFrom()
-            print "<= WhatsApp: <- %s GroupMessage" % (src)
+        if mEntity.getType() == 'text':
+            self.onTextMessage(mEntity)
+        elif mEntity.getType() == 'media':
+            self.onMediaMessage(mEntity)
 
     @ProtocolEntityCallback("receipt")
     def onReceipt(self, entity):
@@ -118,11 +114,11 @@ class MailLayer(YowInterfaceLayer):
 
     def sendEmail(self, mEntity, subject, content):
         timestamp = catch(lambda: mEntity.getTimestamp(), time.time())
-        participant = mEntity.getFrom(full = False)
         isbroadcast = catch(lambda: mEntity.isBroadcast(), False)
         srclong = mEntity.getFrom(full = True)
         srcShort = mEntity.getFrom(full = False)
         niceName = mEntity.getNotify()
+        participant = catch(lambda: mEntity.getParticipant(), None) or srcShort
         replyAddr = config['reply'].format(srcShort)
         dst = config['outgoing']['sendto']
 
