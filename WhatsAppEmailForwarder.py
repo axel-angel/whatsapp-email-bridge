@@ -113,7 +113,8 @@ class MailLayer(YowInterfaceLayer):
     def onReceipt(self, entity):
         ack = OutgoingAckProtocolEntity(entity.getId(), "receipt",
                 entity.getType(), entity.getFrom())
-        self.toLower(ack)
+        if not args.dry:
+            self.toLower(ack)
 
     def sendEmail(self, mEntity, subject, content):
         timestamp = catch(lambda: mEntity.getTimestamp(), time.time())
@@ -128,6 +129,9 @@ class MailLayer(YowInterfaceLayer):
         content2 = "%s\n\nAt %s by %s (%s) isBroadCast=%s" \
                 % (content, formattedDate, srcShort, participant,
                     isbroadcast)
+
+        if args.debug:
+            print "subject {%s}, content {%s}, content2 {%s}" % (subject, content, content2)
 
         msg = MIMEText(content2, 'plain', 'utf-8')
         msg['To'] = "WhatsApp <%s>" % (dst)
@@ -155,6 +159,8 @@ class MailLayer(YowInterfaceLayer):
                 if confout.get('force_starttls'):
                     raise
 
+        if args.debug:
+            print "dst {%s}, msg.as_string {%s}" % (dst, msg.as_string())
         s.sendmail(dst, [dst], msg.as_string())
         s.quit()
         print "=> Mail: %s -> %s" % (replyAddr, dst)
@@ -168,7 +174,8 @@ class MailLayer(YowInterfaceLayer):
 
         content = mEntity.getBody()
         self.sendEmail(mEntity, content, content)
-        self.toLower(receipt)
+        if not args.dry:
+            self.toLower(receipt)
 
     def onMediaMessage(self, mEntity):
         id = mEntity.getId()
@@ -184,7 +191,8 @@ class MailLayer(YowInterfaceLayer):
         self.sendEmail(mEntity, "Media: %s" % (tpe), content)
 
         receipt = OutgoingReceiptProtocolEntity(id, src)
-        self.toLower(receipt)
+        if not args.dry:
+            self.toLower(receipt)
 
 
 class YowsupMyStack(object):
@@ -237,6 +245,8 @@ class MailServer(SMTPServer):
 
         try:
             txt = mail_to_txt(m)
+            if args.debug:
+                print "! mail_to_txt: {%s}" % (txt)
         except Exception as e:
             return "501 malformed content: %s" % (str(e))
 
@@ -253,12 +263,18 @@ class MailServer(SMTPServer):
             if len(txt.strip()) > 0:
                 msg = TextMessageProtocolEntity(txt, to = jid)
                 print "=> WhatsApp: -> %s" % (jid)
-                self._yowsup.toLower(msg)
+                if not args.dry:
+                    self._yowsup.toLower(msg)
+                if args.debug:
+                    print "! Message: {%s}" % (txt)
+                    print "! from entity: {%s}" % (msg.getBody())
 
             # send media that were attached pieces
             if m.is_multipart():
                 for pl in getattr(m, '_payload', []):
                     self.handle_forward_media(jid, pl)
+                    if args.debug:
+                        print "! Attachement: %s" % (pl)
 
     def handle_forward_media(self, jid, pl):
         ct = pl.get('Content-Type', 'None')
@@ -335,7 +351,8 @@ class MailServer(SMTPServer):
     def send_uploaded_media(self, fpath, jid, url, ip = None):
         entity = ImageDownloadableMediaMessageProtocolEntity.fromFilePath(
                 fpath, url, ip, jid)
-        self._yowsup.toLower(entity)
+        if not args.dry:
+            self._yowsup.toLower(entity)
 
     def onRequestUploadError(self, jid, fpath, errorEntity, originalEntity):
         print "WhatsApp: -> upload request failed %s" % (fpath)
@@ -439,6 +456,10 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser()
     p.add_argument('--config', default='config.yaml',
             help='configuration file path')
+    p.add_argument('--debug', action='store_true', default=False,
+            help='show more information during processing')
+    p.add_argument('--dry', action='store_true', default=False,
+            help='disable sending to WhatsApp')
     args = p.parse_args()
 
     print "Parsing config: %s" % (args.config)
