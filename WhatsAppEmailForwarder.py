@@ -54,6 +54,8 @@ from yowsup.layers.protocol_media.protocolentities \
         import VCardMediaMessageProtocolEntity
 from yowsup.layers.protocol_media.protocolentities \
         import RequestUploadIqProtocolEntity
+from yowsup.layers.protocol_presence.protocolentities \
+        import AvailablePresenceProtocolEntity
 from yowsup.layers.protocol_media.mediauploader import MediaUploader
 from yowsup.layers.protocol_iq import YowIqProtocolLayer
 from yowsup.layers.protocol_messages import YowMessagesProtocolLayer
@@ -89,6 +91,7 @@ class MailLayer(YowInterfaceLayer):
     @ProtocolEntityCallback("success")
     def onSuccess(self, entity):
         print "<= WhatsApp: Logged in"
+        self.toLower(AvailablePresenceProtocolEntity())
 
     @ProtocolEntityCallback("failure")
     def onFailure(self, entity):
@@ -198,10 +201,10 @@ class YowsupMyStack(object):
         env.CURRENT_ENV = env.S40YowsupEnv()
         layers = (
             MailLayer,
-            (YowAuthenticationProtocolLayer, YowMessagesProtocolLayer,
-                YowReceiptProtocolLayer, YowAckProtocolLayer,
-                YowMediaProtocolLayer, YowIqProtocolLayer,
-                YowPresenceProtocolLayer)
+            (YowPresenceProtocolLayer, YowAuthenticationProtocolLayer,
+                YowMessagesProtocolLayer, YowReceiptProtocolLayer,
+                YowAckProtocolLayer, YowMediaProtocolLayer, YowIqProtocolLayer,
+                )
             ) + YOWSUP_CORE_LAYERS
 
         self.stack = YowStack(layers)
