@@ -1,21 +1,40 @@
 reply: "whatsapp+{}@example.com"
+
 whatsapp:
     phone: "XXXXXXXXXXX"
     password: "XXXXXXXXXXXXXXXX"
+
 outgoing:
     with: SMTP
-    host: "smtp.gmail.com"
+    host: smtp.gmail.com
     port: 465
     user: myuser
     pass: mypass
-    sendto: "myuser@gmail.com"
+    sendto: myuser@gmail.com
     ssl: 1
     force_starttls: 0
-ingoing:
-    # create an SMTP server
-    with: SMTP
-    host: localhost
-    port: 25
-    # create an LMTP server
+
+ingoing: # pick one type below
+
+    # IMAP client
+    with: IMAP
+    host: imap.gmail.com
+    port: 993
+    user: myuser
+    pass: mypass
+
+    # POP3 client (careful! it deletes messages)
+    #with: POP3
+    #host: pop.gmail.com
+    #port: 995
+    #user: myuser
+    #pass: mypass
+
+    # SMTP server
+    #with: SMTP
+    #host: localhost
+    #port: 25
+
+    # LMTP server
     #with: LMTP
     #socket: "/home/you/whatsapp.sock"

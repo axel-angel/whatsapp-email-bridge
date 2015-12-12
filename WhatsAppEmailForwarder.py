@@ -386,8 +386,7 @@ class MailClient(MailParserMixin):
         self.port = confinc['port']
         self.user = confinc['user']
         self.password = confinc['pass']
-        self.dest = confinc['dest']
-        self.poll_wait = confinc.get('poll_wait', 360)
+        self.poll_wait = confinc.get('poll_wait', 60)
         self.ssl = confinc.get('ssl', True)
 
         self.messageQueue = Queue.Queue()
@@ -402,10 +401,18 @@ class MailClient(MailParserMixin):
     def loop(self): # FIXME: threads aren't needed with asyncore
         try:
             while True:
-                msg = self.messageQueue.get(block=False)
-                if not msg:
+                m_str = self.messageQueue.get(block=False)
+                m = Parser().parsestr(m_str)
+                dst = m.get('to')
+                try:
+                    (phone,) = parse(config.get('reply'), dst)
+                except TypeError:
+                    if args.debug:
+                        print "mail doesn't match reply: %s" % (dst)
                     break
-                self.send_yowsup(self.dest, msg)
+                if args.debug:
+                    print "got a message in MailClient's queue for:", phone
+                self.send_yowsup(dest, msg)
         except Queue.Empty:
             pass
 
@@ -451,7 +458,8 @@ class ImapClient(MailClient):
             for num in data[0].split():
                 print "<= IMAP: Mail id %s" % (num)
                 typ, data = imap.fetch(num, '(RFC822)')
-                self.messageQueue.put(data[0][1])
+                m_str = data[0][1]
+                self.messageQueue.put(m_str)
 
             imap.close()
             imap.logout()
