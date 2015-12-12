@@ -44,6 +44,6 @@ Small descriptions of the parts are provided below:
         with: SMTP or LMTP (look at the example configuration)
 
         host: Socket is bind for this address (eg: localhost). SMTP only.
-        host: Socket is bind for this port (eg: 2500). SMTP only.
+        port: Socket is bind for this port (eg: 2500). SMTP only.
         socket: File path of the unix domain socket that listen for incoming
             email that will be forwarded on WhatsApp. LMTP only.
