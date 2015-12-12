@@ -30,7 +30,10 @@ In your config.yaml, change fields as necessary:
   * password: Your WhatsApp password, you should have it already or you
       need to register, read:
           https://github.com/tgalal/yowsup/issues/195#issuecomment-29389646
- * outgoing: Section that configures where are the messages you write that should be forwarded to WhatsApp. This program will connect through IMAP or POP3 (or can listen as a standalone SMTP server).
+ * ingoing: Configures where are the messages you write that should be forwarded to WhatsApp. This program will connect through IMAP or POP3 (or can listen as a standalone SMTP server).
+  * with: IMAP or POP3 or SMTP or LMTP
+  * (look at config.yaml.example for the rest of details)
+ * outgoing: Configures where are delivered the received WhatsApp messages to (currently only support: forward by email).
   * with: SMTP # only possible value for now
   * host: SMTP server address
   * port: SMTP server port
@@ -39,6 +42,3 @@ In your config.yaml, change fields as necessary:
   * sendto: Address which receives the WhatsApp messages
   * ssl: 1 or 0 to toggle to connect with SSL
   * force_starttls: 1 or 0 to toggle force STARTSSL at connection time
- * ingoing: Section to configure listening for emails to forward them
-  * with: IMAP or POP3 or SMTP or LMTP
-  * (look at config.yaml.example for the rest of details)
