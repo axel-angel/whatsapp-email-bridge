@@ -501,7 +501,7 @@ class MailServer(SMTPServer, MailParserMixin):
                 return ret
 
 
-class YoLMTPServer(MailServer):
+class YoSMTPServer(MailServer):
     def __init__(self, yowsup, localaddr, remoteaddr):
         # code taken from original SMTPServer code
         self._yowsup = yowsup
@@ -509,7 +509,7 @@ class YoLMTPServer(MailServer):
         self._remoteaddr = remoteaddr
         asyncore.dispatcher.__init__(self)
         try:
-            self.create_socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            self.make_socket()
             # try to re-use a server port if possible
             self.set_reuse_addr()
             self.bind(localaddr)
@@ -519,23 +519,13 @@ class YoLMTPServer(MailServer):
             self.close()
             raise
 
-class YoSMTPServer(MailServer):
-    def __init__(self, yowsup, localaddr, remoteaddr):
-        # code taken from original SMTPServer code
-        self._yowsup = yowsup
-        self._localaddr = localaddr
-        self._remoteaddr = remoteaddr
-        asyncore.dispatcher.__init__(self)
-        try:
-            self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-            # try to re-use a server port if possible
-            self.set_reuse_addr()
-            self.bind(localaddr)
-            self.listen(5)
-        except:
-            # cleanup asyncore.socket_map before raising
-            self.close()
-            raise
+    def make_socket(self):
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+
+
+class YoLMTPServer(YoSMTPServer):
+    def make_socket(self):
+        self.create_socket(socket.AF_UNIX, socket.SOCK_STREAM)
 
 
 def mail_payload_decoded(pl):
