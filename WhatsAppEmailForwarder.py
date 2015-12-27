@@ -39,7 +39,7 @@ from yowsup import env
 from yowsup.layers.auth import YowCryptLayer, YowAuthenticationProtocolLayer, \
         AuthError
 from yowsup.layers.coder import YowCoderLayer
-from yowsup.layers import YowLayerEvent
+from yowsup.layers import YowLayerEvent, YowParallelLayer
 from yowsup.layers.interface import YowInterfaceLayer, ProtocolEntityCallback
 from yowsup.layers.logger import YowLoggerLayer
 from yowsup.layers.network import YowNetworkLayer
@@ -189,10 +189,11 @@ class YowsupMyStack(object):
         self.layer = MailLayer()
         layers = (
             self.layer,
-            (YowPresenceProtocolLayer, YowAuthenticationProtocolLayer,
+            YowParallelLayer([
+                YowPresenceProtocolLayer, YowAuthenticationProtocolLayer,
                 YowMessagesProtocolLayer, YowReceiptProtocolLayer,
-                YowAckProtocolLayer, YowMediaProtocolLayer, YowIqProtocolLayer,
-            ),
+                YowAckProtocolLayer, YowMediaProtocolLayer, YowIqProtocolLayer
+            ]),
             #YowAxolotlLayer, # FIXME: This prevents us from sending messages!
         ) + YOWSUP_CORE_LAYERS
 
