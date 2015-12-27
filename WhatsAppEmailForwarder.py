@@ -67,7 +67,7 @@ from yowsup.layers.protocol_receipts.protocolentities \
         import OutgoingReceiptProtocolEntity
 from yowsup.layers.protocol_presence import YowPresenceProtocolLayer
 from yowsup.layers.stanzaregulator import YowStanzaRegulator
-from yowsup.layers.axolotl import YowAxolotlLayer
+#from yowsup.layers.axolotl import YowAxolotlLayer # FIXME
 from yowsup.stacks import YowStack, YOWSUP_CORE_LAYERS
 
 
@@ -193,7 +193,7 @@ class YowsupMyStack(object):
                 YowMessagesProtocolLayer, YowReceiptProtocolLayer,
                 YowAckProtocolLayer, YowMediaProtocolLayer, YowIqProtocolLayer,
             ),
-            YowAxolotlLayer,
+            #YowAxolotlLayer, # FIXME: This prevents us from sending messages!
         ) + YOWSUP_CORE_LAYERS
 
         self.stack = YowStack(layers)
