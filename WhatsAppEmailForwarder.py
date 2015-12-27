@@ -67,6 +67,7 @@ from yowsup.layers.protocol_receipts.protocolentities \
         import OutgoingReceiptProtocolEntity
 from yowsup.layers.protocol_presence import YowPresenceProtocolLayer
 from yowsup.layers.stanzaregulator import YowStanzaRegulator
+from yowsup.layers.axolotl import YowAxolotlLayer
 from yowsup.stacks import YowStack, YOWSUP_CORE_LAYERS
 
 
@@ -191,8 +192,9 @@ class YowsupMyStack(object):
             (YowPresenceProtocolLayer, YowAuthenticationProtocolLayer,
                 YowMessagesProtocolLayer, YowReceiptProtocolLayer,
                 YowAckProtocolLayer, YowMediaProtocolLayer, YowIqProtocolLayer,
-                )
-            ) + YOWSUP_CORE_LAYERS
+            ),
+            YowAxolotlLayer,
+        ) + YOWSUP_CORE_LAYERS
 
         self.stack = YowStack(layers)
         self.stack.setProp(YowAuthenticationProtocolLayer.PROP_CREDENTIALS,
