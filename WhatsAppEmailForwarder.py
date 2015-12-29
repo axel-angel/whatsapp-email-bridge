@@ -27,6 +27,7 @@ import time
 import asyncore
 import atexit
 import tempfile
+import traceback
 from parse import parse
 from email.mime.text import MIMEText
 from email.parser import Parser
@@ -238,6 +239,12 @@ class YowsupMyStack(object):
                 self.server.loop()
         except AuthError as e:
             print("Authentication Error: %s" % e.message)
+        except Exception as e:
+            ownjid = self.layer.getOwnJid()
+            fakeEntity = TextMessageProtocolEntity("", _from = ownjid)
+            self.layer.sendEmail(fakeEntity, "WhatsApp crashed",
+                    "Exception: %s\n\n%s" % (str(e), traceback.format_exc()))
+            raise
 
 
 class LMTPChannel(SMTPChannel):
