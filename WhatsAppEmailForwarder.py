@@ -195,7 +195,7 @@ class YowsupMyStack(object):
                 YowMessagesProtocolLayer, YowReceiptProtocolLayer,
                 YowAckProtocolLayer, YowMediaProtocolLayer, YowIqProtocolLayer
             ]),
-            #YowAxolotlLayer, # FIXME: This prevents us from sending messages!
+            YowAxolotlLayer, # FIXME: This prevents us from sending messages!
         ) + YOWSUP_CORE_LAYERS
 
         self.stack = YowStack(layers)
