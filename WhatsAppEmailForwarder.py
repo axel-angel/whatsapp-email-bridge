@@ -68,7 +68,7 @@ from yowsup.layers.protocol_receipts.protocolentities \
         import OutgoingReceiptProtocolEntity
 from yowsup.layers.protocol_presence import YowPresenceProtocolLayer
 from yowsup.layers.stanzaregulator import YowStanzaRegulator
-#from yowsup.layers.axolotl import YowAxolotlLayer # FIXME
+from yowsup.layers.axolotl import YowAxolotlLayer # FIXME
 from yowsup.stacks import YowStack, YOWSUP_CORE_LAYERS
 
 
@@ -136,17 +136,19 @@ class MailLayer(YowInterfaceLayer):
             s_class = smtplib.SMTP
 
         s = s_class(confout['host'], confout.get('port', 25))
-
-        if confout.get('smtp_user', None):
-            s.login(confout.get('smtp_user'), confout.get('smtp_pass'))
+        s.ehlo();
 
         if not confout.get('force_startssl', True):
             try:
                 s.starttls() # Some servers require it, let's try
+                s.ehlo();
             except smtplib.SMTPException:
                 print "<= Mail: Server doesn't support STARTTLS"
                 if confout.get('force_starttls'):
                     raise
+
+        if confout.get('smtp_user', None):
+            s.login(confout.get('smtp_user'), confout.get('smtp_pass'))
 
         if args.debug:
             print "dst {%s}, msg.as_string {%s}" % (dst, msg.as_string())
