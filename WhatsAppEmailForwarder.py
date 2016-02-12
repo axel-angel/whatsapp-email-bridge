@@ -147,8 +147,8 @@ class MailLayer(YowInterfaceLayer):
                 if confout.get('force_starttls'):
                     raise
 
-        if confout.get('smtp_user', None):
-            s.login(confout.get('smtp_user'), confout.get('smtp_pass'))
+        if confout.get('user', None):
+            s.login(confout.get('user'), confout.get('pass'))
 
         if args.debug:
             print "dst {%s}, msg.as_string {%s}" % (dst, msg.as_string())
