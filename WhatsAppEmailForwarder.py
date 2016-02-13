@@ -136,17 +136,19 @@ class MailLayer(YowInterfaceLayer):
             s_class = smtplib.SMTP
 
         s = s_class(confout['host'], confout.get('port', 25))
-
-        if confout.get('smtp_user', None):
-            s.login(confout.get('smtp_user'), confout.get('smtp_pass'))
+        s.ehlo();
 
         if not confout.get('force_startssl', True):
             try:
                 s.starttls() # Some servers require it, let's try
+                s.ehlo();
             except smtplib.SMTPException:
                 print "<= Mail: Server doesn't support STARTTLS"
                 if confout.get('force_starttls'):
                     raise
+
+        if confout.get('user', None):
+            s.login(confout.get('user'), confout.get('pass'))
 
         if args.debug:
             print "dst {%s}, msg.as_string {%s}" % (dst, msg.as_string())
