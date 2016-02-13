@@ -68,8 +68,8 @@ from yowsup.layers.protocol_receipts.protocolentities \
         import OutgoingReceiptProtocolEntity
 from yowsup.layers.protocol_presence import YowPresenceProtocolLayer
 from yowsup.layers.stanzaregulator import YowStanzaRegulator
-#from yowsup.layers.axolotl import YowAxolotlLayer # FIXME
-from yowsup.stacks import YowStack, YOWSUP_CORE_LAYERS
+from yowsup.layers.axolotl import YowAxolotlLayer # FIXME
+from yowsup.stacks import YowStack, YowStackBuilder, YOWSUP_CORE_LAYERS
 
 
 class MailLayer(YowInterfaceLayer):
@@ -186,26 +186,11 @@ class MailLayer(YowInterfaceLayer):
 
 class YowsupMyStack(object):
     def __init__(self, credentials):
-        env.CURRENT_ENV = env.S40YowsupEnv()
         self.layer = MailLayer()
-        layers = (
-            self.layer,
-            YowParallelLayer([
-                YowPresenceProtocolLayer, YowAuthenticationProtocolLayer,
-                YowMessagesProtocolLayer, YowReceiptProtocolLayer,
-                YowAckProtocolLayer, YowMediaProtocolLayer, YowIqProtocolLayer
-            ]),
-            YowAxolotlLayer, # FIXME: This prevents us from sending messages!
-        ) + YOWSUP_CORE_LAYERS
-
-        self.stack = YowStack(layers)
-        self.stack.setProp(YowAuthenticationProtocolLayer.PROP_CREDENTIALS,
-                credentials)
-        self.stack.setProp(YowNetworkLayer.PROP_ENDPOINT,
-                YowConstants.ENDPOINTS[0])
-        self.stack.setProp(YowCoderLayer.PROP_DOMAIN, YowConstants.DOMAIN)
-        self.stack.setProp(YowCoderLayer.PROP_RESOURCE,
-                env.CURRENT_ENV.getResource())
+        self.stack = YowStackBuilder().pushDefaultLayers(axolotl = True) \
+                                      .push(MailLayer) \
+                                      .build()
+        self.stack.setCredentials(credentials)
 
     def startInputThread(self):
         print "Starting input thread"
