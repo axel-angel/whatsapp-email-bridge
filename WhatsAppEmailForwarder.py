@@ -220,7 +220,11 @@ class YowsupMyStack(object):
         try:
             while True:
                 # FIXME: polling for IMAP and POP3, use async instead
+                if args.debug:
+                    print "== WhatsApp loop"
                 self.stack.loop(timeout = 10, count = 1)
+                if args.debug:
+                    print "== Server loop"
                 self.server.loop()
         except AuthError as e:
             print("Authentication Error: %s" % e.message)
