@@ -111,8 +111,6 @@ class MailLayer(YowInterfaceLayer):
         niceName = mEntity.getNotify()
         participant = catch(lambda: mEntity.getParticipant(), None) or srcShort
         replyAddr = config['reply'].format(srcShort)
-        dst = config['outgoing']['sendto']
-
         formattedDate = datetime.datetime.fromtimestamp(timestamp) \
                                          .strftime('%d/%m/%Y %H:%M')
         content2 = "%s\n\nAt %s by %s (%s) isBroadCast=%s" \
@@ -121,11 +119,19 @@ class MailLayer(YowInterfaceLayer):
 
         if args.debug:
             print "subject {%s}, content {%s}, content2 {%s}" % (subject, content, content2)
+        self.sendEmailRaw(content2, timestamp=timestamp, niceName=niceName,
+                srclong=srclong, replyAddr=replyAddr, subject=subject)
 
-        msg = MIMEText(content2, 'plain', 'utf-8')
+    def sendEmailRaw(self, content, subject=None, timestamp=None,
+            niceName="WhatsApp Bridge", srclong=None, replyAddr=None):
+        dst = config['outgoing']['sendto']
+        srclong = srclong or dst
+        replyAddr = replyAddr or dst
+
+        msg = MIMEText(content, 'plain', 'utf-8')
         msg['To'] = "WhatsApp <%s>" % (dst)
         msg['From'] = "%s <%s>" % (niceName, srclong)
-        msg['Date'] = formatdate(timestamp)
+        msg['Date'] = formatdate(timestamp or time.time())
         msg['Reply-To'] = "%s <%s>" % (niceName, replyAddr)
         msg['Subject'] = subject
 
@@ -231,10 +237,8 @@ class YowsupMyStack(object):
         except AuthError as e:
             print("Authentication Error: %s" % e.message)
         except Exception as e:
-            ownjid = self.layer.getOwnJid()
-            fakeEntity = TextMessageProtocolEntity("", _from = ownjid)
-            self.layer.sendEmail(fakeEntity, "WhatsApp crashed",
-                    "Exception: %s\n\n%s" % (str(e), traceback.format_exc()))
+            content = "Exception: %s\n\n%s" % (str(e), traceback.format_exc())
+            self.layer.sendEmailRaw(content, subject="WhatsApp crashed")
             raise
 
 
@@ -360,10 +364,8 @@ class MailParserMixin():
 
     def onUploadError(self, fpath, jid=None, url=None):
         print "WhatsApp: -> upload failed %s" % (fpath)
-        ownjid = self._yowsup.getOwnJid()
-        fakeEntity = TextMessageProtocolEntity("", _from = ownjid)
-        self._yowsup.sendEmail(fakeEntity, "WhatsApp upload failed",
-                "File: %s" % (fpath))
+        content = "File: %s" % (fpath)
+        self._yowsup.sendEmailRaw(content, subject="WhatsApp upload failed")
 
     def onUploadProgress(self, fpath, jid, url, progress):
         print "WhatsApp: -> upload progression %s for %s, %d%%" \
