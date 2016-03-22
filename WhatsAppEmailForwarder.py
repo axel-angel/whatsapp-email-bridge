@@ -415,7 +415,7 @@ class MailClient(MailParserMixin):
                     break
                 if args.debug:
                     print "got a message in MailClient's queue for:", phone
-                self.send_yowsup(dest, msg)
+                self.send_yowsup(phone, m_str)
         except Queue.Empty:
             pass
 
