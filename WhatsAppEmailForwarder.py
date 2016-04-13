@@ -31,7 +31,7 @@ import traceback
 from parse import parse
 from email.mime.text import MIMEText
 from email.parser import Parser
-from email.utils import formatdate
+from email.utils import formatdate, parseaddr
 from smtpd import SMTPChannel, SMTPServer
 from html2text import html2text
 
@@ -406,7 +406,7 @@ class MailClient(MailParserMixin):
             while True:
                 m_str = self.messageQueue.get(block=False)
                 m = Parser().parsestr(m_str)
-                dst = m.get('to')
+                _, dst = parseaddr(m.get('to'))
                 try:
                     (phone,) = parse(config.get('reply'), dst)
                 except TypeError:
