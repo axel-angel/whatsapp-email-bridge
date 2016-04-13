@@ -40,7 +40,7 @@ from yowsup import env
 from yowsup.layers.auth import YowCryptLayer, YowAuthenticationProtocolLayer, \
         AuthError
 from yowsup.layers.coder import YowCoderLayer
-from yowsup.layers import YowLayerEvent, YowParallelLayer
+from yowsup.layers import YowLayerEvent, YowParallelLayer, EventCallback
 from yowsup.layers.interface import YowInterfaceLayer, ProtocolEntityCallback
 from yowsup.layers.logger import YowLoggerLayer
 from yowsup.layers.network import YowNetworkLayer
@@ -76,6 +76,14 @@ class MailLayer(YowInterfaceLayer):
     def __init__(self):
         YowInterfaceLayer.__init__(self)
 
+    @EventCallback(YowNetworkLayer.EVENT_STATE_DISCONNECTED)
+    def onStateDisconnected(self, entity):
+        reason = layerEvent.getArg("reason")
+        print "<= WhatsApp: disconnected (%s)" % (reason)
+        content = "Disconnected: %s" % (reason)
+        self.layer.sendEmailRaw(content, subject="WhatsApp disconnected")
+        os._exit(os.EX_OK)
+
     @ProtocolEntityCallback("success")
     def onSuccess(self, entity):
         print "<= WhatsApp: Logged in"
@@ -96,10 +104,17 @@ class MailLayer(YowInterfaceLayer):
         elif mEntity.getType() == 'media':
             self.onMediaMessage(mEntity)
 
+    @ProtocolEntityCallback("iq")
+    def onIq(self, entity):
+        if args.debug:
+            print "<= WhatsApp: <- Iq {%s}" % (entity)
+
     @ProtocolEntityCallback("receipt")
     def onReceipt(self, entity):
         ack = OutgoingAckProtocolEntity(entity.getId(), "receipt",
                 entity.getType(), entity.getFrom())
+        if args.debug:
+            print "<= WhatsApp: receipt %s" % (entity)
         if not args.dry:
             self.toLower(ack)
 
@@ -584,6 +599,9 @@ def catch(f, default):
         return default
 
 if __name__ == "__main__":
+    import logging
+    logging.basicConfig()
+
     import argparse
     p = argparse.ArgumentParser()
     p.add_argument('--config', default='config.yaml',
