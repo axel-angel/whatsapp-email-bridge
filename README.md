@@ -1,3 +1,7 @@
+# OUTDATED
+
+This project is very old and very unlikely to works. At least it would need some adaptation if not major ones. The upstream library changed a lot but maybe the code could be useful in some way so it's kept here as an archive.
+
 # Description
 This program allows to make a two-way gateway between your WhatsApp account
 and your email address.
